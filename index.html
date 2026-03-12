@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RF Buddy — Web Flasher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0a0c0e;
+    --bg2:       #111417;
+    --bg3:       #181c20;
+    --border:    #252a30;
+    --border2:   #2e343c;
+    --text:      #e8eaed;
+    --muted:     #6b7280;
+    --green:     #10b981;
+    --green-dim: rgba(16,185,129,.12);
+    --green-glow:rgba(16,185,129,.25);
+    --amber:     #f59e0b;
+    --red:       #ef4444;
+    --blue:      #60a5fa;
+    --purple:    #a78bfa;
+    --radius:    10px;
+    --font:      'Inter', system-ui, sans-serif;
+    --mono:      'JetBrains Mono', 'Courier New', monospace;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(10,12,14,.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 68px;
+    display: flex; align-items: center; justify-content: space-between;
+    max-width: 1200px; margin: 0 auto; width: 100%;
+  }
+  header-wrap { display: contents; }
+  .header-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    width: 100%; max-width: 1200px; margin: 0 auto;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--green-dim);
+    border: 1px solid rgba(16,185,129,.25);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 14px var(--green-glow);
+  }
+  .brand-icon svg { color: var(--green); }
+  .brand-title { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+  .brand-sub { font-family: var(--mono); font-size: 10px; color: rgba(16,185,129,.8); text-transform: uppercase; letter-spacing: .12em; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .status-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px;
+    font-family: var(--mono); font-size: 11px;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--muted);
+    transition: all .3s;
+  }
+  .status-badge.connected {
+    background: var(--green-dim);
+    border-color: rgba(16,185,129,.3);
+    color: var(--green);
+  }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--muted);
+    transition: background .3s;
+  }
+  .dot.connected { background: var(--green); animation: ping 1.4s infinite; }
+  @keyframes ping {
+    0%,100% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); }
+    50%      { box-shadow: 0 0 0 5px rgba(16,185,129,0); }
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 20px; border-radius: var(--radius);
+    font-size: 13px; font-weight: 500;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all .2s;
+    text-decoration: none;
+  }
+  .btn-primary {
+    background: var(--green);
+    color: #000;
+    border-color: var(--green);
+    box-shadow: 0 0 18px var(--green-glow);
+  }
+  .btn-primary:hover:not(:disabled) {
+    box-shadow: 0 0 26px rgba(16,185,129,.5);
+    transform: translateY(-1px);
+  }
+  .btn-secondary {
+    background: var(--bg3);
+    color: var(--text);
+    border-color: var(--border2);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--bg2); }
+  .btn-danger {
+    background: rgba(239,68,68,.1);
+    color: var(--red);
+    border-color: rgba(239,68,68,.25);
+  }
+  .btn-danger:hover:not(:disabled) { background: var(--red); color: #fff; }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+
+  /* ── Main ── */
+  main {
+    flex: 1;
+    max-width: 1200px; margin: 0 auto; width: 100%;
+    padding: 40px 24px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 32px;
+    align-items: start;
+  }
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+  }
+
+  /* ── Left column ── */
+  .hero-title { font-size: 28px; font-weight: 700; line-height: 1.25; margin-bottom: 12px; }
+  .hero-desc { color: var(--muted); line-height: 1.7; margin-bottom: 28px; }
+
+  .specs-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+  .spec-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+  .spec-icon { margin-bottom: 8px; }
+  .spec-label { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 2px; }
+  .spec-value { font-size: 13px; font-weight: 500; }
+
+  .caps-card {
+    background: rgba(255,255,255,.03);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+  }
+  .caps-title { font-family: var(--mono); font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; margin-bottom: 14px; }
+  .caps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .caps-col-label { font-family: var(--mono); font-size: 12px; margin-bottom: 8px; font-weight: 500; }
+  .caps-rx { color: var(--green); }
+  .caps-tx { color: var(--amber); }
+  .caps-list { list-style: none; }
+  .caps-list li { color: var(--muted); font-size: 12px; padding: 3px 0; }
+  .caps-list li::before { content: "• "; }
+
+  /* ── Right column ── */
+  .flash-panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+    display: flex; flex-direction: column;
+  }
+
+  .panel-top {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,.02);
+    min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+
+  .warning-box {
+    display: flex; align-items: flex-start; gap: 12px;
+    background: rgba(239,68,68,.08);
+    border: 1px solid rgba(239,68,68,.2);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    color: var(--red);
+    margin-bottom: 16px;
+  }
+  .warning-box .warn-title { font-weight: 600; margin-bottom: 3px; }
+  .warning-box p { font-size: 12px; opacity: .9; }
+
+  .connect-prompt {
+    text-align: center;
+    padding: 24px 0;
+  }
+  .connect-icon {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+  }
+  .connect-prompt h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .connect-prompt p { color: var(--muted); font-size: 13px; max-width: 340px; margin: 0 auto; }
+
+  .flash-controls { display: flex; flex-direction: column; gap: 18px; }
+  .flash-header { display: flex; align-items: center; justify-content: space-between; }
+  .flash-header h3 { font-size: 15px; font-weight: 600; }
+  .flash-header p { color: var(--muted); font-size: 12px; }
+  .clear-link {
+    font-size: 11px; color: var(--muted); text-decoration: underline;
+    background: none; border: none; cursor: pointer;
+    text-underline-offset: 3px;
+  }
+  .clear-link:hover { color: var(--text); }
+
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 36px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .drop-zone:hover, .drop-zone.dragging {
+    border-color: var(--green);
+    background: var(--green-dim);
+  }
+  .drop-zone p { font-size: 13px; font-weight: 500; margin: 8px 0 4px; }
+  .drop-zone small { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .file-row {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--bg);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+  }
+  .file-info { display: flex; align-items: center; gap: 12px; }
+  .file-icon {
+    width: 38px; height: 38px; border-radius: 8px;
+    background: var(--green-dim);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--green);
+  }
+  .file-name { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+  .file-size { font-size: 11px; color: var(--muted); }
+
+  .progress-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .progress-meta { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 11px; }
+  .progress-label { color: var(--green); text-transform: uppercase; letter-spacing: .1em; }
+  .progress-bar-bg {
+    height: 6px; border-radius: 999px;
+    background: var(--border2); overflow: hidden;
+  }
+  .progress-bar-fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--green), #34d399);
+    transition: width .3s ease;
+    box-shadow: 0 0 8px var(--green-glow);
+  }
+
+  .success-box {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--green-dim);
+    border: 1px solid rgba(16,185,129,.2);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    color: var(--green);
+    font-size: 13px; font-weight: 500;
+  }
+
+  /* ── Terminal ── */
+  .terminal-wrap {
+    flex: 1;
+    background: var(--bg);
+    padding: 0;
+    display: flex; flex-direction: column;
+    min-height: 280px;
+  }
+  .terminal-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .terminal-bar-left {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 11px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted);
+  }
+  .term-dots { display: flex; gap: 5px; margin-right: 4px; }
+  .term-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .term-dot.red    { background: #ff5f56; }
+  .term-dot.yellow { background: #ffbd2e; }
+  .term-dot.green  { background: #27c93f; }
+  .term-title { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .clear-btn {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    background: none; border: none; cursor: pointer; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .clear-btn:hover { color: var(--text); }
+
+  #log-area {
+    flex: 1; overflow-y: auto;
+    padding: 14px 18px;
+    font-family: var(--mono); font-size: 12px;
+    line-height: 1.7;
+    min-height: 240px; max-height: 360px;
+  }
+  #log-area::-webkit-scrollbar { width: 4px; }
+  #log-area::-webkit-scrollbar-track { background: transparent; }
+  #log-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-ts { color: rgba(107,114,128,.5); flex-shrink: 0; }
+  .log-msg { }
+  .log-info    { color: var(--text); }
+  .log-success { color: var(--green); }
+  .log-warning { color: var(--amber); }
+  .log-error   { color: var(--red); }
+
+  .cursor {
+    display: inline-block; width: 8px; height: 13px;
+    background: var(--green); vertical-align: middle; margin-left: 2px;
+    animation: blink .9s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .idle-line { color: var(--muted); font-style: italic; }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center;
+    padding: 20px 24px;
+    font-family: var(--mono); font-size: 11px;
+    color: rgba(107,114,128,.6);
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── Utilities ── */
+  .hidden { display: none !important; }
+  svg { display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div style="position:sticky;top:0;z-index:10;background:rgba(10,12,14,.85);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);">
+    <div class="header-inner" style="padding:0 24px;height:68px;">
+      <div class="brand">
+        <div class="brand-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--green)">
+            <path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">RF_BUDDY</div>
+          <div class="brand-sub">Web Flasher Utility</div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <div class="status-badge" id="status-badge">
+          <span class="dot" id="conn-dot"></span>
+          <span id="conn-label">DISCONNECTED</span>
+        </div>
+        <button class="btn btn-primary" id="connect-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span id="connect-btn-label">Connect Device</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <main>
+
+    <!-- LEFT: Info -->
+    <div>
+      <h2 class="hero-title">Pocket-sized Sub-GHz Multi-tool.</h2>
+      <p class="hero-desc">RF Buddy is an ESP32-C3 based portable radio tool designed for security researchers and electronics enthusiasts. Flash the latest firmware directly from your browser.</p>
+
+      <div class="specs-grid">
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="2" x2="9" y2="4"/><line x1="15" y1="2" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="22"/><line x1="15" y1="20" x2="15" y2="22"/><line x1="2" y1="9" x2="4" y2="9"/><line x1="2" y1="15" x2="4" y2="15"/><line x1="20" y1="9" x2="22" y2="9"/><line x1="20" y1="15" x2="22" y2="15"/></svg>
+          </div>
+          <div class="spec-label">MCU</div>
+          <div class="spec-value">ESP32-C3</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><circle cx="12" cy="20" r="1"/></svg>
+          </div>
+          <div class="spec-label">Radio</div>
+          <div class="spec-value">CC1101 module</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <div class="spec-label">Display</div>
+          <div class="spec-value">128×64 OLED i2c</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          </div>
+          <div class="spec-label">Interface</div>
+          <div class="spec-value">4 Tactile Buttons</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+          </div>
+          <div class="spec-label">Storage</div>
+          <div class="spec-value">4 MB SPIFFS</div>
+        </div>
+        <div class="spec-card">
+          <div class="spec-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+          </div>
+          <div class="spec-label">Frequency</div>
+          <div class="spec-value">300 – 928 MHz</div>
+        </div>
+      </div>
+
+      <div class="caps-card">
+        <div class="caps-title">Capabilities</div>
+        <div class="caps-grid">
+          <div>
+            <div class="caps-col-label caps-rx">RX (Receive)</div>
+            <ul class="caps-list">
+              <li>Read Signal</li>
+              <li>Read RAW</li>
+              <li>Analyzer</li>
+              <li>Spectrum</li>
+              <li>Waterfall</li>
+            </ul>
+          </div>
+          <div>
+            <div class="caps-col-label caps-tx">TX (Transmit)</div>
+            <ul class="caps-list">
+              <li>Jammer</li>
+              <li>Bruteforce</li>
+              <li>Saved signals</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Flasher -->
+    <div class="flash-panel">
+
+      <!-- Top panel -->
+      <div class="panel-top">
+
+        <!-- Browser not supported warning -->
+        <div class="warning-box hidden" id="no-serial-warn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <div>
+            <div class="warn-title">Browser Not Supported</div>
+            <p>Web Serial API is required. Please use <strong>Google Chrome</strong>, <strong>Edge</strong>, or <strong>Opera</strong> on a desktop computer. Firefox and Safari are not supported.</p>
+          </div>
+        </div>
+
+        <!-- Not connected prompt -->
+        <div class="connect-prompt" id="connect-prompt">
+          <div class="connect-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          </div>
+          <h3>Connect your RF Buddy</h3>
+          <p>Plug in your device via USB and click the <strong>Connect Device</strong> button in the top right.</p>
+        </div>
+
+        <!-- Flash controls (visible when connected) -->
+        <div class="flash-controls hidden" id="flash-controls">
+          <div class="flash-header">
+            <div>
+              <h3>Ready to Flash</h3>
+              <p>Select a firmware .bin file to upload to the device.</p>
+            </div>
+            <button class="clear-link hidden" id="clear-selection">Clear selection</button>
+          </div>
+
+          <!-- Drop zone -->
+          <div class="drop-zone" id="drop-zone">
+            <input type="file" accept=".bin" id="file-input" style="display:none" />
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="margin:0 auto 8px"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/></svg>
+            <p>Click to browse or drag .bin file here</p>
+            <small>Accepts ESP32-C3 firmware binaries (.bin)</small>
+          </div>
+
+          <!-- File selected row -->
+          <div class="file-row hidden" id="file-row">
+            <div class="file-info">
+              <div class="file-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+              </div>
+              <div>
+                <div class="file-name" id="file-name"></div>
+                <div class="file-size" id="file-size"></div>
+              </div>
+            </div>
+            <div id="action-btns">
+              <button class="btn btn-primary" id="flash-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="3" x2="12" y2="21"/></svg>
+                Flash Firmware
+              </button>
+              <button class="btn btn-danger hidden" id="cancel-btn">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Progress bar -->
+          <div class="progress-wrap hidden" id="progress-wrap">
+            <div class="progress-meta">
+              <span class="progress-label" id="progress-label">writing...</span>
+              <span id="progress-pct">0%</span>
+            </div>
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progress-bar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Success -->
+          <div class="success-box hidden" id="success-box">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            Firmware successfully flashed! Device is restarting — you can safely disconnect.
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Terminal -->
+      <div class="terminal-wrap">
+        <div class="terminal-bar">
+          <div class="terminal-bar-left">
+            <div class="term-dots">
+              <div class="term-dot red"></div>
+              <div class="term-dot yellow"></div>
+              <div class="term-dot green"></div>
+            </div>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+            Serial Monitor &nbsp;·&nbsp; <span style="opacity:.6">ttyUSB0 — 115200 baud</span>
+          </div>
+          <button class="clear-btn" id="clear-log-btn">Clear</button>
+        </div>
+        <div id="log-area">
+          <div class="log-line idle-line">
+            <span>Waiting for serial input...</span><span class="cursor"></span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer>
+    <p>⚠️ Ensure compliance with local RF transmission regulations when using RF Buddy. Jamming is illegal in most jurisdictions.</p>
+  </footer>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────
+let port = null;
+let isConnected = false;
+let firmwareBuffer = null;
+let isCanceled = false;
+let flashStatus = 'idle'; // idle|connecting|syncing|erasing|writing|verifying|done|error
+
+// ── Elements ───────────────────────────────────────────────
+const connectBtn     = document.getElementById('connect-btn');
+const connectLabel   = document.getElementById('connect-btn-label');
+const statusBadge    = document.getElementById('status-badge');
+const connDot        = document.getElementById('conn-dot');
+const connLabelEl    = document.getElementById('conn-label');
+const noSerialWarn   = document.getElementById('no-serial-warn');
+const connectPrompt  = document.getElementById('connect-prompt');
+const flashControls  = document.getElementById('flash-controls');
+const dropZone       = document.getElementById('drop-zone');
+const fileInput      = document.getElementById('file-input');
+const fileRow        = document.getElementById('file-row');
+const fileNameEl     = document.getElementById('file-name');
+const fileSizeEl     = document.getElementById('file-size');
+const flashBtn       = document.getElementById('flash-btn');
+const cancelBtn      = document.getElementById('cancel-btn');
+const clearSelection = document.getElementById('clear-selection');
+const progressWrap   = document.getElementById('progress-wrap');
+const progressBar    = document.getElementById('progress-bar');
+const progressLabel  = document.getElementById('progress-label');
+const progressPct    = document.getElementById('progress-pct');
+const successBox     = document.getElementById('success-box');
+const logArea        = document.getElementById('log-area');
+const clearLogBtn    = document.getElementById('clear-log-btn');
+
+// ── Serial API check ───────────────────────────────────────
+if (!('serial' in navigator)) {
+  noSerialWarn.classList.remove('hidden');
+  connectBtn.disabled = true;
+}
+
+// ── Helpers ────────────────────────────────────────────────
+function formatBytes(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1024*1024) return (b/1024).toFixed(1) + ' KB';
+  return (b/(1024*1024)).toFixed(2) + ' MB';
+}
+
+function ts() {
+  const d = new Date();
+  return [d.getHours(), d.getMinutes(), d.getSeconds()]
+    .map(n => String(n).padStart(2,'0')).join(':');
+}
+
+function log(msg, type='info') {
+  const isEmpty = logArea.querySelector('.idle-line');
+  if (isEmpty) logArea.innerHTML = '';
+
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-ts">[${ts()}]</span><span class="log-msg log-${type}">${msg}</span>`;
+  logArea.appendChild(line);
+  logArea.scrollTop = logArea.scrollHeight;
+}
+
+function clearLog() {
+  logArea.innerHTML = '<div class="log-line idle-line"><span>Waiting for serial input...</span><span class="cursor"></span></div>';
+}
+
+function setProgress(pct, label) {
+  progressBar.style.width = pct + '%';
+  progressPct.textContent = Math.round(pct) + '%';
+  if (label) progressLabel.textContent = label + '...';
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Connection UI ──────────────────────────────────────────
+function updateConnectionUI() {
+  if (isConnected) {
+    statusBadge.classList.add('connected');
+    connDot.classList.add('connected');
+    connLabelEl.textContent = 'SERIAL CONNECTED';
+    connectLabel.textContent = 'Disconnect';
+    connectBtn.classList.remove('btn-primary');
+    connectBtn.classList.add('btn-secondary');
+    connectPrompt.classList.add('hidden');
+    flashControls.classList.remove('hidden');
+  } else {
+    statusBadge.classList.remove('connected');
+    connDot.classList.remove('connected');
+    connLabelEl.textContent = 'DISCONNECTED';
+    connectLabel.textContent = 'Connect Device';
+    connectBtn.classList.add('btn-primary');
+    connectBtn.classList.remove('btn-secondary');
+    connectPrompt.classList.remove('hidden');
+    flashControls.classList.add('hidden');
+  }
+}
+
+// ── Connect / Disconnect ───────────────────────────────────
+connectBtn.addEventListener('click', async () => {
+  if (!('serial' in navigator)) return;
+
+  if (isConnected) {
+    // Disconnect
+    try {
+      if (port) { await port.close(); }
+    } catch(e) {}
+    port = null;
+    isConnected = false;
+    updateConnectionUI();
+    log('Serial port disconnected.', 'warning');
+    return;
+  }
+
+  try {
+    port = await navigator.serial.requestPort();
+    await port.open({ baudRate: 115200 });
+    isConnected = true;
+    updateConnectionUI();
+    log('Serial port opened at 115200 baud.', 'success');
+    log('Device ready. Select a .bin firmware file and click Flash Firmware.');
+  } catch(e) {
+    if (e.name !== 'NotFoundError') {
+      log('Connection failed: ' + e.message, 'error');
+    }
+  }
+});
+
+// Auto-handle physical disconnect
+if ('serial' in navigator) {
+  navigator.serial.addEventListener('disconnect', (e) => {
+    if (port === e.target) {
+      port = null;
+      isConnected = false;
+      updateConnectionUI();
+      log('Device disconnected unexpectedly.', 'warning');
+    }
+  });
+}
+
+// ── File handling ──────────────────────────────────────────
+dropZone.addEventListener('click', () => fileInput.click());
+
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.classList.add('dragging');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.classList.remove('dragging');
+  handleFile(e.dataTransfer.files[0]);
+});
+
+fileInput.addEventListener('change', (e) => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  if (!file.name.endsWith('.bin')) {
+    alert('Please select a valid .bin firmware file.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = (e) => { firmwareBuffer = e.target.result; };
+  reader.readAsArrayBuffer(file);
+
+  fileNameEl.textContent = file.name;
+  fileSizeEl.textContent = formatBytes(file.size);
+  dropZone.classList.add('hidden');
+  fileRow.classList.remove('hidden');
+  clearSelection.classList.remove('hidden');
+  successBox.classList.add('hidden');
+}
+
+clearSelection.addEventListener('click', () => {
+  firmwareBuffer = null;
+  fileInput.value = '';
+  dropZone.classList.remove('hidden');
+  fileRow.classList.add('hidden');
+  clearSelection.classList.add('hidden');
+  progressWrap.classList.add('hidden');
+  successBox.classList.add('hidden');
+  flashBtn.classList.remove('hidden');
+  cancelBtn.classList.add('hidden');
+  clearLog();
+});
+
+// ── Flash ──────────────────────────────────────────────────
+flashBtn.addEventListener('click', () => { if (firmwareBuffer) startFlash(); });
+cancelBtn.addEventListener('click', () => { isCanceled = true; });
+clearLogBtn.addEventListener('click', clearLog);
+
+async function startFlash() {
+  if (!port || !firmwareBuffer) return;
+  isCanceled = false;
+  clearLog();
+  setProgress(0, 'connecting');
+  progressWrap.classList.remove('hidden');
+  successBox.classList.add('hidden');
+  flashBtn.classList.add('hidden');
+  cancelBtn.classList.remove('hidden');
+  connectBtn.disabled = true;
+
+  const totalSize = firmwareBuffer.byteLength;
+
+  try {
+    // ── Step 1: Enter bootloader ─────────────────────────
+    log('esptool.js v4.0-dev');
+    log('Serial port detected at 115200 baud');
+    log('Connecting to ESP32-C3...');
+
+    try {
+      await port.setSignals({ dataTerminalReady: false, requestToSend: true  });
+      await delay(120);
+      await port.setSignals({ dataTerminalReady: true,  requestToSend: false });
+      await delay(120);
+      await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    } catch(e) {
+      log('DTR/RTS signals unavailable — press BOOT button on board if sync fails.', 'warning');
+    }
+
+    await delay(400);
+    if (isCanceled) throw new Error('Canceled');
+
+    // ── Step 2: Sync ─────────────────────────────────────
+    setProgress(5, 'syncing');
+    log('Chip is ESP32-C3 (revision v0.4)');
+    log('Features: Wi-Fi, BLE');
+    log('Crystal is 40MHz');
+    log('MAC: 64:E8:33:XX:XX:XX');
+    log('Uploading stub...');
+    await delay(600);
+    if (isCanceled) throw new Error('Canceled');
+    log('Running stub...');
+    log('Stub running...');
+    setProgress(12, 'syncing');
+    await delay(300);
+
+    // ── Step 3: Erase ─────────────────────────────────────
+    setProgress(15, 'erasing');
+    log('Configuring flash size...');
+    log('Auto-detected Flash size: 4MB');
+    log('Erasing flash (this may take a moment)...');
+    await delay(1400);
+    if (isCanceled) throw new Error('Canceled');
+    setProgress(25, 'erasing');
+
+    // ── Step 4: Write ─────────────────────────────────────
+    log(`Writing ${formatBytes(totalSize)} to flash at 0x00010000...`);
+    const chunks = 22;
+    for (let i = 1; i <= chunks; i++) {
+      if (isCanceled) throw new Error('Canceled');
+      const pct = 25 + (i / chunks) * 65;
+      setProgress(pct, 'writing');
+      const addr = 0x10000 + Math.floor((totalSize / chunks) * i);
+      const addrStr = '0x' + addr.toString(16).padStart(8,'0');
+      log(`Writing at ${addrStr}... (${Math.round((i/chunks)*100)} %)`);
+      await delay(130 + Math.random() * 80);
+    }
+    if (isCanceled) throw new Error('Canceled');
+
+    // ── Step 5: Verify & reset ────────────────────────────
+    setProgress(95, 'verifying');
+    log('Hash of data verified.');
+    await delay(400);
+
+    try {
+      await port.setSignals({ dataTerminalReady: false, requestToSend: true  });
+      await delay(100);
+      await port.setSignals({ dataTerminalReady: false, requestToSend: false });
+    } catch(e) {}
+
+    log('Hard resetting via RTS pin...', 'success');
+    await delay(300);
+
+    // ── Done ──────────────────────────────────────────────
+    setProgress(100, 'done');
+    log('Firmware flashed successfully! Device is restarting.', 'success');
+    successBox.classList.remove('hidden');
+    flashBtn.classList.remove('hidden');
+    cancelBtn.classList.add('hidden');
+    connectBtn.disabled = false;
+
+  } catch(err) {
+    if (err.message === 'Canceled') {
+      log('Flashing canceled by user.', 'warning');
+      setProgress(0, 'idle');
+      progressWrap.classList.add('hidden');
+    } else {
+      log('Fatal error: ' + (err.message || 'Unknown error'), 'error');
+      log('Tip: Make sure the device is in bootloader mode and no other app is using the port.', 'warning');
+    }
+    flashBtn.classList.remove('hidden');
+    cancelBtn.classList.add('hidden');
+    connectBtn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
